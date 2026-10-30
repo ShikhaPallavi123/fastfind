@@ -1,6 +1,6 @@
 # FastFind
 
-Ask questions about **8,397 arXiv abstracts** (distributed systems, performance, hardware, operating systems) and get a short answer that **cites its sources**, with links to the papers.
+Ask questions about **8,397 arXiv abstracts** (distributed systems, performance, hardware, operating systems) and get a short answer that **cites its sources**, shown with the arXiv ID and text of each paper used.
 
 Built for the Nebius x NVIDIA Global AI Hackathon.
 
