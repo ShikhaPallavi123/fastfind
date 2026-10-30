@@ -1,0 +1,25 @@
+{
+  "note": "Questions the arXiv HPC corpus should NOT be able to answer well. offtopic = clearly unrelated; nearmiss = adjacent topic, probably only loosely covered. Used to calibrate the relevance cutoff.",
+  "questions": [
+    {"q": "What is the capital of Australia?", "kind": "offtopic", "answerable": false},
+    {"q": "How do I bake sourdough bread at home?", "kind": "offtopic", "answerable": false},
+    {"q": "Who won the football world cup in 2014?", "kind": "offtopic", "answerable": false},
+    {"q": "What are the symptoms of seasonal flu?", "kind": "offtopic", "answerable": false},
+    {"q": "How do I get a tourist visa for Japan?", "kind": "offtopic", "answerable": false},
+    {"q": "What is a good recipe for vegetable curry?", "kind": "offtopic", "answerable": false},
+    {"q": "Who wrote the novel Pride and Prejudice?", "kind": "offtopic", "answerable": false},
+    {"q": "How many calories are in a banana?", "kind": "offtopic", "answerable": false},
+    {"q": "What is the best way to learn the guitar?", "kind": "offtopic", "answerable": false},
+    {"q": "When did the Roman Empire fall?", "kind": "offtopic", "answerable": false},
+    {"q": "What is a bank conflict in GPU shared memory and how do I fix it with padding?", "kind": "nearmiss", "answerable": false},
+    {"q": "How do I set up a CSS flexbox layout for a website?", "kind": "nearmiss", "answerable": false},
+    {"q": "What learning rate schedule works best for training image classifiers?", "kind": "nearmiss", "answerable": false},
+    {"q": "How does a hash map handle collisions in Python?", "kind": "nearmiss", "answerable": false},
+    {"q": "What is the difference between TCP and UDP for video calls?", "kind": "nearmiss", "answerable": false},
+    {"q": "How do I write a SQL query with a window function?", "kind": "nearmiss", "answerable": false},
+    {"q": "What is the best way to prepare for a software engineering interview?", "kind": "nearmiss", "answerable": false},
+    {"q": "How does public key encryption work in HTTPS?", "kind": "nearmiss", "answerable": false},
+    {"q": "What are the main features of the Rust programming language?", "kind": "nearmiss", "answerable": false},
+    {"q": "How do I train a chatbot to answer customer support questions?", "kind": "nearmiss", "answerable": false}
+  ]
+}

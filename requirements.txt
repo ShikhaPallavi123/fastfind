@@ -1,0 +1,8 @@
+numpy
+fastapi
+uvicorn
+pydantic
+openai
+# Optional, for GPU search. Install the CUDA build that matches your machine:
+# https://pytorch.org/get-started/locally/
+# torch

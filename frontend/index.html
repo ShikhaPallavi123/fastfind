@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FastFind</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --ink: #1b1d1f; --muted: #62676d;
+    --line: #e2e4e1; --accent: #2f6f4f; --accent-soft: #e6f0ea; --warn: #9a5b12;
+    --warn-soft: #fbf1e1; --err: #a02f2f; --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141615; --card: #1c1f1e; --ink: #ecefed; --muted: #9aa19d;
+      --line: #2c302e; --accent: #6fcf9a; --accent-soft: #1d2e25; --warn: #e3b269;
+      --warn-soft: #2e2516; --err: #ef8c8c; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 820px; margin: 0 auto; padding: 40px 20px 80px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+  .tag { color: var(--muted); margin: 4px 0 0; }
+  .badge { font: 12px var(--mono); padding: 4px 10px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); border: 1px solid var(--line); }
+  .badge.warn { background: var(--warn-soft); color: var(--warn); }
+  form { display: flex; gap: 10px; margin: 28px 0 12px; }
+  input[type=text] { flex: 1; font: inherit; padding: 13px 14px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button { font: inherit; font-weight: 500; padding: 13px 22px; border-radius: 10px; border: 0;
+    background: var(--accent); color: #fff; cursor: pointer; }
+  @media (prefers-color-scheme: dark) { button { color: #0d1a13; } }
+  button:disabled { opacity: .55; cursor: wait; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+  .chip { font-size: 14px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--card); color: var(--muted); cursor: pointer; }
+  .chip:hover { color: var(--ink); border-color: var(--accent); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 8px; font-size: 13px; font-weight: 500; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted); }
+  #answer { white-space: pre-wrap; }
+  .timings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .t { padding: 10px 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
+  .t b { display: block; font: 600 20px var(--mono); }
+  .t span { font-size: 12px; color: var(--muted); }
+  .t.gpu b { color: var(--accent); }
+  .src { padding: 12px 0; border-top: 1px solid var(--line); }
+  .src:first-of-type { border-top: 0; padding-top: 0; }
+  .src .meta { font: 12px var(--mono); color: var(--muted); margin-bottom: 4px; }
+  .src p { margin: 0; font-size: 15px; }
+  .err { color: var(--err); }
+  .hidden { display: none; }
+  footer { margin-top: 36px; color: var(--muted); font-size: 13px; }
+  @media (max-width: 560px) { .timings { grid-template-columns: 1fr; } form { flex-direction: column; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>FastFind</h1>
+      <p class="tag">Ask your documents. GPU parallel search finds the evidence, Nemotron writes the answer.</p>
+    </div>
+    <span id="badge" class="badge">connecting</span>
+  </header>
+
+  <form id="form">
+    <input id="q" type="text" placeholder="Ask a question about the indexed documents" autocomplete="off" required>
+    <button id="go" type="submit">Ask</button>
+  </form>
+  <div class="chips" id="chips"></div>
+
+  <section id="out" class="hidden">
+    <div class="card"><h2>Answer</h2><div id="answer"></div></div>
+    <div class="card"><h2>Where the time went <span id="t-total" style="text-transform:none;letter-spacing:0"></span></h2>
+      <div class="timings">
+        <div class="t"><b id="t-embed">-</b><span>embed question (Nebius)</span></div>
+        <div class="t gpu"><b id="t-search">-</b><span id="t-search-label">similarity search</span></div>
+        <div class="t"><b id="t-gen">-</b><span>Nemotron answer (Nebius)</span></div>
+      </div>
+      <p id="t-note" style="margin:10px 0 0;font-size:13px;color:var(--muted)"></p>
+    </div>
+    <div class="card"><h2>Sources</h2><div id="sources"></div></div>
+  </section>
+  <p id="error" class="err hidden"></p>
+
+  <footer>Built for the Nebius x NVIDIA Global AI Hackathon. Answers use only the retrieved sources and cite them as [1], [2].</footer>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const examples = [
+  "What is a bank conflict in shared memory?",
+  "How does Raft choose a new leader?",
+  "Why does grounding reduce hallucination in RAG?"
+];
+
+examples.forEach((text) => {
+  const c = document.createElement("button");
+  c.type = "button"; c.className = "chip"; c.textContent = text;
+  c.onclick = () => { $("q").value = text; $("form").requestSubmit(); };
+  $("chips").appendChild(c);
+});
+
+function loadBadge() {
+  fetch("/health").then((r) => r.json()).then((h) => {
+    const gpu = h.search_backend === "torch-cuda";
+    $("badge").textContent = `${gpu ? "GPU (CUDA)" : "CPU fallback"} · ${h.num_chunks} chunks`;
+    $("badge").classList.toggle("warn", !gpu || h.embedding_mode !== "nebius");
+    $("t-search-label").textContent = gpu ? "GPU similarity search" : "similarity search (CPU)";
+  }).catch(() => { $("badge").textContent = "API offline"; $("badge").classList.add("warn"); });
+}
+loadBadge();
+
+const fmt = (ms) => ms >= 1000 ? (ms / 1000).toFixed(1) + " s" : ms.toFixed(1) + " ms";
+
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("error").classList.add("hidden");
+  $("go").disabled = true; $("go").textContent = "Searching";
+  try {
+    const res = await fetch("/ask", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: $("q").value, top_k: 5 }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Request failed");
+    $("answer").textContent = data.answer;
+    $("t-embed").textContent = fmt(data.timings_ms.embed_question);
+    $("t-search").textContent = fmt(data.timings_ms.gpu_search);
+    $("t-gen").textContent = fmt(data.timings_ms.nemotron_answer);
+    const t = data.timings_ms, total = t.embed_question + t.gpu_search + t.nemotron_answer;
+    $("t-total").textContent = `· total ${fmt(total)}`;
+    $("t-note").textContent = `The search over ${data.chunks_searched} chunks took ${fmt(t.gpu_search)}. ` +
+      `Most of the total is the two network calls to Nebius (embedding and the Nemotron answer).`;
+    loadBadge();
+    $("sources").replaceChildren(...data.sources.map((s, i) => {
+      const d = document.createElement("div"); d.className = "src";
+      const m = document.createElement("div"); m.className = "meta";
+      const id = (s.source.match(/^(\d{4}\.\d{4,5}(?:v\d+)?|[a-z-]+_\d{7}(?:v\d+)?)\.md$/) || [])[1];
+      if (id) {
+        const a = document.createElement("a");
+        a.href = "https://arxiv.org/abs/" + id.replace("_", "/"); a.target = "_blank"; a.rel = "noopener";
+        a.textContent = "arXiv:" + id.replace("_", "/"); a.style.color = "var(--accent)";
+        m.append(`[${i + 1}] `, a, ` · similarity ${s.score}`);
+      } else {
+        m.textContent = `[${i + 1}] ${s.source} · similarity ${s.score}`;
+      }
+      const p = document.createElement("p"); p.textContent = s.text;
+      d.append(m, p); return d;
+    }));
+    $("out").classList.remove("hidden");
+  } catch (err) {
+    $("error").textContent = err.message; $("error").classList.remove("hidden");
+  } finally {
+    $("go").disabled = false; $("go").textContent = "Ask";
+  }
+});
+</script>
+</body>
+</html>
