@@ -31,6 +31,23 @@ All numbers come from `scripts/eval.py` and `scripts/benchmark.py` in this repos
 
 On the 32 questions that do not name a specific system, hybrid search reaches 84% recall@1 and 91% recall@5.
 
+**Smaller index.** Keeping the first 1024 of the 4096 numbers per vector (Qwen3-Embedding supports this) makes the index 4x smaller (185 MB to 46 MB) and search 3.7x faster (3.07 ms to 0.82 ms on an Apple-silicon laptop CPU) for a 1-point drop in recall@1. The hosted demo uses 1024.
+
+**Knowing when not to answer.** A relevance cutoff, calibrated on the eval set, rejects all 10 clearly off-topic test questions and keeps 95% of answerable ones. When nothing is relevant the app answers "I could not find this in the indexed documents." and makes no model call.
+
+**Latency (typical).** Embedding the question 0.7 to 3 s, similarity search under 20 ms, Nemotron answer 2 to 5 s. Most of the total (3 to 5 s) is the two network calls to Nebius, not the search.
+
+**CPU baseline for exact search** (single query, 4096-dim vectors, 10-thread Apple CPU): 100,000 vectors 25.5 ms, 250,000 vectors 72.2 ms.
+
+**GPU speed test:** not measured for this submission. The hosted demo runs search on CPU. `scripts/benchmark.py` times CPU against GPU (CUDA through PyTorch) on a machine that has a GPU, and writes `benchmark_results.json`.
+
+## Known limitations
+
+- The questions used for evaluation are synthetic, and the corpus is research abstracts. It answers research-style questions well and textbook-style ones poorly.
+- "Near-miss" questions about an adjacent topic (for example GPU shared-memory bank conflicts, when the papers discuss DRAM banks) can still produce an answer built from loosely related papers. Their scores overlap real matches, so a score cutoff alone cannot catch them. The sources are always shown so a reader can check.
+- The hosted demo runs search on CPU. GPU numbers are reported separately above.
+- The demo has a daily question cap and a per-minute limit to protect the API budget.
+
 ## Run it yourself
 
 ```bash
