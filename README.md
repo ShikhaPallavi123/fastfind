@@ -91,7 +91,7 @@ Settings (environment variables): `NEBIUS_API_KEY` (required), `CHAT_MODEL`, `EM
 
 ## What was built during the submission period
 
-All code in this repository was written during the hackathon submission period, starting October 23, 2026. The GPU search approach builds on the author's graduate coursework in parallel programming and high-performance computing. The data is public arXiv metadata (titles and abstracts), fetched with the public arXiv API.
+All code in this repository was written during the hackathon submission period, starting October 01, 2026. The GPU search approach builds on the author's graduate coursework in parallel programming and high-performance computing. The data is public arXiv metadata (titles and abstracts), fetched with the public arXiv API.
 
 ## License
 
