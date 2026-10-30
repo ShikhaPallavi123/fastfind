@@ -16,6 +16,24 @@ question -> embed (Qwen3-Embedding on Nebius Token Factory)
 - **Nebius Token Factory:** both the embeddings and the Nemotron answer run through its OpenAI-compatible API.
 - **Search:** exact brute-force similarity (no approximation), on CUDA through PyTorch when a GPU is present, NumPy on CPU otherwise. The page badge shows which one is active.
 
+## Live demo and quick start
+
+Live demo: https://fastfind-6bza.onrender.com (free host: the first request after idle can take about a minute to wake up).
+
+Run it locally with the included index, no re-embedding needed:
+
+```bash
+pip install -r requirements.txt
+export NEBIUS_API_KEY='your-token-factory-key'
+uvicorn backend.app:app --port 8000        # open http://localhost:8000
+```
+
+## How NVIDIA Nemotron and Nebius Token Factory are used
+
+- **NVIDIA Nemotron:** `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` writes every answer, using only the retrieved papers and citing them as [n]. Nemotron also wrote the 100 evaluation questions (`scripts/make_eval.py`).
+- **Nebius Token Factory:** one OpenAI-compatible endpoint and one key serve both the embeddings (Qwen3-Embedding-8B) and Nemotron. There was no GPU server to provision, so embedding 11,297 chunks, the evaluations and the live demo all ran on the starting credit.
+- **Other Nebius services:** none. The app is hosted on Render and calls Token Factory at runtime.
+
 ## Measured results
 
 All numbers come from `scripts/eval.py` and `scripts/benchmark.py` in this repository.
