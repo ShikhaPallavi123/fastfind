@@ -131,6 +131,13 @@ def summarize(rows: list[dict]) -> dict:
         group = [r for r in rows if r["kind"] == kind]
         s[f"{kind}_total"] = len(group)
         s[f"{kind}_abstained"] = sum(r["abstained"] for r in group)
+        # Unanswerable questions that still got an answer: is it faithful, and does it
+        # really answer the question, or only describe a loosely related paper?
+        got = [r for r in group if not r["abstained"] and r.get("judge") and "error" not in r["judge"]]
+        rels = [r["judge"]["answers_question"] for r in got]
+        s[f"{kind}_answered_judged"] = len(got)
+        s[f"{kind}_answered_unsupported_claims"] = sum(r["judge"]["counts"]["unsupported"] for r in got)
+        s[f"{kind}_answered_relevance"] = {k: rels.count(k) for k in ("yes", "partial", "no")}
     return s
 
 
@@ -151,6 +158,13 @@ def print_summary(s: dict) -> None:
             print(f"          judge errors: {s['judge_errors']}")
     print(f"  Rule 4  off-topic declined:    {pct(s['offtopic_abstained'], s['offtopic_total'])}")
     print(f"          near-miss declined:    {pct(s['nearmiss_abstained'], s['nearmiss_total'])}")
+    for kind, label in (("nearmiss", "near-miss"), ("offtopic", "off-topic")):
+        n = s[f"{kind}_answered_judged"]
+        if n:
+            a = s[f"{kind}_answered_relevance"]
+            print(f"          {label} answered anyway: {n}  -> judge says it answers the question:"
+                  f" yes {a['yes']}, partial {a['partial']}, no {a['no']};"
+                  f" unsupported claims {s[f'{kind}_answered_unsupported_claims']}")
     if s["generate_ms_mean"] is not None:
         print(f"  Cost    answer time mean {s['generate_ms_mean'] / 1000:.1f} s, p95 {s['generate_ms_p95'] / 1000:.1f} s;"
               f" tokens per answer {s['answer_tokens_mean']:.0f}"
