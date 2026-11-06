@@ -41,6 +41,53 @@ On the 32 questions that do not name a specific system, hybrid search reaches 84
 
 **GPU speed test:** not measured for this submission. The hosted demo runs search on CPU. `scripts/benchmark.py` times CPU against GPU (CUDA through PyTorch) on a machine that has a GPU, and writes `benchmark_results.json`.
 
+## Answer-quality evaluation (added after the hackathon, Nov 2026)
+
+> This section and everything in `evals/` were built **after** the hackathon submission, on the `evals` branch. The submitted code is unchanged on `main`.
+
+Retrieval quality (above) shows that the right paper is found. This suite measures whether the **answer** is right. It runs all 100 eval questions and 20 unanswerable ones through the same pipeline as the live app and scores four rules:
+
+| Rule | What it checks | How |
+|---|---|---|
+| 1. Citations | Every claim carries a citation, and every citation points to a source that was given | Plain Python (`evals/citations.py`), free |
+| 2. Faithfulness | Each claim is supported by the source it cites | LLM judge, claim by claim (`evals/judge.py`) |
+| 3. Relevance | The answer responds to the question | LLM judge: yes / partial / no |
+| 4. Abstention | Off-topic and near-miss questions are declined | Off-topic question set |
+
+The judge is **Qwen3-235B-A22B-Instruct**, a different and larger model than Nemotron, which writes the answers, so the answers are not graded by the model that wrote them. Each claim gets one verdict: *supported*, *wrong citation* (true per another source, not the cited one), *unsupported*, or *not a claim*.
+
+### Results: prompt v1 vs v2
+
+Reading the v1 failures showed three patterns: explaining *how* a method works when the abstract only says *what* it achieves, attaching a number to the wrong baseline, and adding uncited "Consequently, ..." sentences. Prompt v2 (`FASTFIND_PROMPT=v2`) adds one rule for each.
+
+| 100 answerable questions | v1 (hackathon prompt) | v2 |
+|---|---|---|
+| Answers with an unsupported claim | 4 | **0** |
+| Faithfulness (answered questions) | 97.3% | **100%** |
+| Citation rule passed | 90% | **100%** |
+| Correct and fully faithful answers | 87 | 86 |
+| Declined ("not in the documents") | 0 | 7 |
+| Off-topic questions declined | 10 / 10 | 10 / 10 |
+| Near-miss questions declined | 6 / 10 | 6 / 10 |
+| Answer time, mean / p95 | 2.5 s / 8.2 s | 2.5 s / 4.6 s |
+
+Of the 7 questions v2 declined, v1 had answered 1 with an invented claim (faithfulness 0.0) and 5 only partly, often saying itself that the abstract lacked the detail. One was a correct v1 answer that v2 lost. v2 trades that one answer for zero unsupported claims.
+
+**Caveats.** The questions are synthetic (Nemotron wrote one per abstract), so treat 100 questions as roughly ±6 points of noise. There is one judge model and no human labels yet. Both runs used the same seed and the same 1024-dimension index. Full answers and verdicts are in `evals/results/`.
+
+### Run it
+
+```bash
+pip install -r requirements.txt pytest
+python -m pytest -q tests/                               # 17 unit tests, no API key needed
+export NEBIUS_API_KEY='your-token-factory-key'
+python -m evals.run_evals --limit 5                       # quick check, a few cents
+FASTFIND_PROMPT=v2 python -m evals.run_evals --limit 100  # full run, about 15 minutes
+python -m evals.rescore evals/results/<file>.json          # re-score a saved run, no API calls
+```
+
+Settings: `FASTFIND_PROMPT` (`v1` default or `v2`), `JUDGE_MODEL`, `--no-judge`, and `--min-faithfulness 0.95`, which exits with an error below the threshold so it can gate CI.
+
 ## Known limitations
 
 - The questions used for evaluation are synthetic, and the corpus is research abstracts. It answers research-style questions well and textbook-style ones poorly.
