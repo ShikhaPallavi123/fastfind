@@ -10,8 +10,11 @@ an answer actually follows that rule:
                    only 3 sources were given) -- a sign of hallucination
   unused sources   sources the model was given but never cited (info only)
 
-An answer that declines ("I could not find this ...") has nothing to cite,
-so it is marked as an abstention and skipped instead of failing.
+An answer that declines ("I could not find this ...", "The sources do not
+discuss ...") and cites nothing is an abstention: skipped instead of failing.
+Inside an answer, a sentence that only says what the sources lack ("The
+sources do not specify the overhead.") is a limit statement, not a claim, so
+it does not count against citation coverage.
 
 Usage:
     from evals.citations import check_citations
@@ -23,14 +26,14 @@ import re
 
 CITATION = re.compile(r"\[(\d+)\]")
 
-# Phrases FastFind uses when it does not answer. Matching is case-insensitive.
-ABSTAIN_PHRASES = (
-    "could not find this in the indexed documents",
-    "do not contain",
-    "does not contain",
-    "do not answer",
-    "does not answer",
-    "not covered by the sources",
+# A sentence that only says what the sources lack, e.g. "The sources do not
+# discuss X", "the exact ratio is not specified", "I could not find this".
+LIMIT_STATEMENT = re.compile(
+    r"\b(?:do|does|did)\s+not\s+(?:discuss|specify|cover|mention|contain|address|provide|"
+    r"describe|answer|state|include|list|give|report|explain)\b"
+    r"|\bnot\s+(?:specified|stated|provided|reported|given|mentioned|discussed|covered|described)\b"
+    r"|could\s+not\s+find",
+    re.IGNORECASE,
 )
 
 # A sentence ends at . ! or ? followed by a space and a new sentence.
@@ -65,8 +68,12 @@ def split_claims(answer: str) -> list[str]:
 
 
 def is_abstention(answer: str) -> bool:
-    text = answer.lower()
-    return any(p in text for p in ABSTAIN_PHRASES)
+    """The whole answer declines: it says the sources lack the answer and cites nothing."""
+    return bool(LIMIT_STATEMENT.search(answer)) and not CITATION.search(answer)
+
+
+def is_limit_statement(claim: str) -> bool:
+    return bool(LIMIT_STATEMENT.search(claim)) and not CITATION.search(claim)
 
 
 def check_citations(answer: str, num_sources: int, min_coverage: float = 0.8) -> dict:
@@ -81,6 +88,8 @@ def check_citations(answer: str, num_sources: int, min_coverage: float = 0.8) ->
         return {"abstained": True, "passed": True, "num_claims": len(claims),
                 "coverage": None, "invalid": [], "unused_sources": []}
 
+    limits = [c for c in claims if is_limit_statement(c)]
+    claims = [c for c in claims if not is_limit_statement(c)]
     cited_per_claim = [[int(n) for n in CITATION.findall(c)] for c in claims]
     all_cited = [n for nums in cited_per_claim for n in nums]
     with_citation = sum(1 for nums in cited_per_claim if nums)
@@ -98,4 +107,5 @@ def check_citations(answer: str, num_sources: int, min_coverage: float = 0.8) ->
         "invalid": invalid,
         "unused_sources": unused,
         "uncited_claims": uncited,
+        "limit_statements": limits,
     }

@@ -190,7 +190,8 @@ def main() -> None:
 
     questions = load_questions(args.limit, args.seed)
     print(f"Running {len(questions)} questions "
-          f"(chat model {os.environ.get('CHAT_MODEL', 'default')}, "
+          f"(prompt {os.environ.get('FASTFIND_PROMPT', 'v1')}, "
+          f"chat model {os.environ.get('CHAT_MODEL', 'default')}, "
           f"judge {'off' if args.no_judge else os.environ.get('JUDGE_MODEL', 'default')})")
 
     rows = []
@@ -215,7 +216,8 @@ def main() -> None:
 
     os.makedirs(RESULTS, exist_ok=True)
     path = os.path.join(RESULTS, datetime.now().strftime("%Y%m%d-%H%M%S") + ".json")
-    meta = {"chat_model": os.environ.get("CHAT_MODEL"), "judge_model": os.environ.get("JUDGE_MODEL"),
+    meta = {"prompt": os.environ.get("FASTFIND_PROMPT", "v1"),
+            "chat_model": os.environ.get("CHAT_MODEL"), "judge_model": os.environ.get("JUDGE_MODEL"),
             "limit": args.limit, "seed": args.seed, "search_mode": app.SEARCH_MODE}
     with open(path, "w", encoding="utf-8") as f:
         json.dump({"meta": meta, "summary": summary, "rows": rows}, f, indent=1, default=str)

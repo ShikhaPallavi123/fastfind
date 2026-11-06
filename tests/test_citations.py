@@ -50,3 +50,14 @@ def test_abstention_is_skipped_not_failed():
 
 def test_empty_answer_fails():
     assert not check_citations("", num_sources=3)["passed"]
+
+
+def test_decline_in_own_words_is_an_abstention():
+    a = "The provided sources do not discuss how a hash map handles collisions in Python."
+    assert check_citations(a, num_sources=3)["abstained"]
+
+
+def test_partial_answer_with_citations_is_not_an_abstention():
+    a = "The datasets used different scanners [1]. The sources do not list the exact combinations."
+    r = check_citations(a, num_sources=1)
+    assert not r["abstained"] and r["coverage"] == 1.0 and len(r["limit_statements"]) == 1

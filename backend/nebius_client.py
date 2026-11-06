@@ -53,6 +53,34 @@ SYSTEM_PROMPT = (
 )
 
 
+# Version 2, written after the answer-quality eval (evals/) found three failure
+# patterns in version 1: explaining HOW a method works when the abstract only
+# says WHAT it achieves, attaching a number to the wrong baseline, and adding
+# uncited lead-in or conclusion sentences. Select with FASTFIND_PROMPT=v2.
+SYSTEM_PROMPT_V2 = (
+    "You answer questions using ONLY the numbered sources provided. The sources are short paper abstracts.\n"
+    "Rules:\n"
+    "1. End every sentence with at least one citation like [1] for the source that states it. "
+    "Do not write introductions, headings, or concluding sentences such as 'Consequently, ...'.\n"
+    "2. State only what a source actually says. If a source says WHAT a method achieves but not HOW "
+    "it works, do not explain the mechanism yourself; say that the abstract does not give those details.\n"
+    "3. Keep every number attached to the exact system and baseline that the source names. "
+    "Never move a number from one comparison to another.\n"
+    "4. If the sources do not answer the question, reply only: 'The sources do not answer this question.' "
+    "Do not use general knowledge to fill the gap.\n"
+    "Be concise: 1 to 4 sentences, or a short plain bullet list. Do not use tables or bold text."
+)
+PROMPTS = {"v1": SYSTEM_PROMPT, "v2": SYSTEM_PROMPT_V2}
+
+
+def system_prompt() -> str:
+    """The prompt version named by FASTFIND_PROMPT (default v1, the hackathon prompt)."""
+    version = os.environ.get("FASTFIND_PROMPT", "v1")
+    if version not in PROMPTS:
+        raise ValueError(f"FASTFIND_PROMPT must be one of {sorted(PROMPTS)}, got {version!r}")
+    return PROMPTS[version]
+
+
 def clean_answer(text: str) -> str:
     """Normalize model output: drop any reasoning block, make citations look like [1]."""
     text = re.sub(r"<think>.*?</think>", "", text or "", flags=re.DOTALL)
@@ -91,7 +119,7 @@ def _chat(client, model, question, context, kwargs):
         model=model,
         temperature=0.2,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt()},
             {
                 "role": "user",
                 "content": f"Sources:\n{context}\n\nQuestion: {question}",
